@@ -27,7 +27,7 @@ QRA is designed for UX researchers and product teams, not engineers. You do not 
 
 1. Answer the agent's questions in chat.
 2. Deploy your data collection instrument and collect responses independently.
-3. Drop your data file into a folder in Finder.
+3. Place your data file in the `data/raw/` folder inside your study directory.
 4. Read the results in chat and open the Word document.
 
 ---
@@ -37,9 +37,9 @@ QRA is designed for UX researchers and product teams, not engineers. You do not 
 Before starting, confirm these are in place:
 
 - **Claude Code desktop** — the app this agent runs inside. QRA uses Claude Code's Bash tool to execute analysis scripts on your machine.
-- **Python 3.10 or later** — required for the analysis scripts and validators. Check by opening Terminal and typing `python3 --version`.
-- **python-docx** — used to export results as a Word document. The agent installs this automatically if it is missing.
-- **pyyaml** — required by the session integrity check and the S6 state validator. Install with: `pip3 install pyyaml`. Unlike python-docx, this is not installed automatically — it must be present before starting the agent.
+- **Python 3.10 or later** — required for the analysis scripts and validators. You may be prompted to install it automatically when you first run the agent.
+- **python-docx** — used to export results as a Word document. You may be prompted to install it automatically when you first run the agent.
+- **pyyaml** — required by the session integrity check and the S6 state validator. You may be prompted to install it automatically when you first run the agent.
 
 No other setup is required. The agent creates all study folders and installs all analysis packages when you start a study.
 
@@ -84,8 +84,8 @@ The four stages marked above (S2, S3, S4, S6) are hard-halt gates. The agent wil
 The full directory tree is documented in [`folder_structure.md`](folder_structure.md). A brief orientation:
 
 - `agent/` — the agent's configuration: `system_prompt.md` (the full workflow definition) and `ARCHITECTURE.md` (design rationale).
-- `knowledge/` — eight domain reference files covering research design, statistics, causal inference, ethics, and reproducibility. The agent loads these on demand.
-- `.claude/commands/` — contains `qra.md`, the slash command file. This is a hidden folder; press `Cmd+Shift+.` in Finder to see it.
+- `knowledge/` — domain reference files covering research design, statistics, causal inference, ethics, and reproducibility. The agent loads these on demand.
+- `.claude/commands/` — contains `qra.md`, the slash command file. This is a hidden folder; enable "show hidden files" in your file manager to see it.
 - `scripts/validators/` — five Python scripts that enforce workflow rules as deterministic code. See [`scripts/validators/README.md`](scripts/validators/README.md) for what each one checks.
 - `studies/<study_name>/` — one folder per research study, created automatically by the agent. Your data goes in `data/raw/`; results appear in `outputs/` and `report/`.
 
@@ -107,6 +107,11 @@ The agent accepts the following control tokens. These must be typed exactly as s
 | `REGRESS TO S<n>` | Formally revert to an earlier stage (e.g. `REGRESS TO S3`) |
 | `ETHICS CONFIRMED` | Confirm participant consent and data handling when PII is found in the data file |
 | `APPROVED DEVIATION <id>` | Approve a declared deviation from the locked S6 plan |
+| `REOPEN STUDY <name>` | Reopen a closed (ARCHIVED) study for amendments |
+| `CREATE STUDY DIR` | Confirm creation of a new study directory |
+| `SWITCH STUDY` | Confirm switching to a different active study |
+| `CONFIRM PROMPT UPDATE` | Confirm a detected hash mismatch during session init and proceed |
+| `CANCEL SESSION` | Abort the session when a hash mismatch is detected during init |
 
 ---
 
