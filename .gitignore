@@ -4,12 +4,8 @@ evals/
 # Research data — personal, never share
 studies/
 
-# Personal iteration backlog — not for QRA users
-TODO.md
-
-# Internal build documentation — not part of the shared agent
-agent/HOW_TO_BUILD_AN_AGENT.md
-agent/heuristic_evaluation.md
+# Personal build and dev files — not part of the shared agent
+Build-Dev/
 
 # Python artifacts
 __pycache__/
