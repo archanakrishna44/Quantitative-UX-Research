@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash agent/init_check.sh)",
+      "Bash(python3 scripts/validators/validate_locked_artifact.py --help)",
+      "Bash(python3 -c \"import docx; print('available')\")"
+    ]
+  }
+}

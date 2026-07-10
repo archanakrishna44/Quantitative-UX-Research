@@ -1,0 +1,25 @@
+# Evals — developer testing harness, not part of the shared agent
+evals/
+
+# Research data — personal, never share
+studies/
+
+# Personal iteration backlog — not for QRA users
+TODO.md
+
+# Internal build documentation — not part of the shared agent
+agent/HOW_TO_BUILD_AN_AGENT.md
+agent/heuristic_evaluation.md
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Obsidian editor config — personal, not part of the agent
+.obsidian/
