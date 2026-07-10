@@ -1,4 +1,5 @@
 # Quantitative Research Assistant — Project Configuration
+<!-- © 2026 Archana Krishna. Original work: https://github.com/archanakrishna44/Quantitative-UX-Research — MIT License -->
 
 ## PROJECT_ROOT
 The project root is the folder you opened in Claude Code. In Bash commands this is the current working directory — use relative paths from there, not an absolute path tied to one machine.

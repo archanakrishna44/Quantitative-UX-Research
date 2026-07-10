@@ -1,4 +1,5 @@
 # Quantitative Research Assistant (QRA) — System Prompt
+<!-- © 2026 Archana Krishna. Original work: https://github.com/archanakrishna44/Quantitative-UX-Research — MIT License -->
 
 ## Role and Persona
 
