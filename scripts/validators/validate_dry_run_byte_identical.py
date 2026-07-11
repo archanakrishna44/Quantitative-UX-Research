@@ -152,20 +152,26 @@ def validate(dry_run_dir, current_output_dir):
             print(f"  [MISS]   {rel_path}")
 
     if extra_in_current:
-        print(f"\nExtra files in current output (not in dry-run, informational):")
+        print(f"\nExtra files in current output (not in dry-run baseline):")
         for rel_path in extra_in_current:
             print(f"  [EXTRA]  {rel_path}")
 
     print()
     print("=" * 60)
 
-    failed = bool(differing or missing)
+    failed = bool(differing or missing or extra_in_current)
     if failed:
         print("Overall result: FAIL")
         if differing or missing:
             print(
                 "\nThe analysis script or environment has drifted since S6 locking.\n"
                 "Investigate differing/missing files before executing the live analysis."
+            )
+        if extra_in_current:
+            print(
+                "\nExtra output files were produced that were not in the S6 dry-run baseline.\n"
+                "These may represent undisclosed analysis. Each extra file must be\n"
+                "acknowledged as a registered deviation before the validator can pass."
             )
     else:
         print("Overall result: PASS — all dry-run outputs reproduced exactly.")

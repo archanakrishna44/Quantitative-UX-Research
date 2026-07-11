@@ -34,9 +34,8 @@ BANNED_SCIPY_STATS_FUNCS = {
     "pearsonr",
     "kendalltau",
     "ks_2samp",
-    "shapiro",
-    "normaltest",
-    "anderson",
+    # shapiro, normaltest, anderson are distributional checks on residuals/covariates
+    # needed to inform the S6 analysis plan — they are NOT banned at S5.
 }
 
 # ---------------------------------------------------------------------------
@@ -117,8 +116,13 @@ class S5Checker(ast.NodeVisitor):
         self._scipy_stats_aliases = set()   # names bound to scipy.stats
         self._pingouin_aliases = set()       # names bound to pingouin module
         self._statsmodels_imported = False   # any statsmodels import present
+        self._statsmodels_aliases = set()    # variable names bound to statsmodels objects
         # statsmodels.stats.power is ALLOWED — track it to avoid false positives
         self._statsmodels_power_aliases = set()
+        # Maps local alias → canonical dotted name for `import mod as alias` (finding #8)
+        self._import_alias_map = {}         # e.g. {"x": "os", "sp": "subprocess"}
+        # Bare names imported from subprocess/os modules (finding #6)
+        self._bare_subprocess_names = set() # e.g. {"system"} from `from os import system`
 
     # ------------------------------------------------------------------ helpers
 
@@ -152,6 +156,9 @@ class S5Checker(ast.NodeVisitor):
         for alias in node.names:
             mod = alias.name
             local = alias.asname if alias.asname else mod.split(".")[0]
+            # Track all module aliases for dotted-name resolution (finding #8)
+            if alias.asname:
+                self._import_alias_map[alias.asname] = mod
             if mod in BANNED_TOP_LEVEL_IMPORTS:
                 self._flag(
                     node,
@@ -164,6 +171,7 @@ class S5Checker(ast.NodeVisitor):
                 self._pingouin_aliases.add(local)
             if mod.startswith("statsmodels") and "power" not in mod:
                 self._statsmodels_imported = True
+                self._statsmodels_aliases.add(local)
             if mod.startswith("statsmodels") and "power" in mod:
                 self._statsmodels_power_aliases.add(local)
         self.generic_visit(node)
@@ -180,14 +188,21 @@ class S5Checker(ast.NodeVisitor):
         # `from scipy import stats` or `from scipy.stats import ...`
         if mod == "scipy" or mod == "scipy.stats":
             for alias in node.names:
+                # Wildcard import from banned module — reject outright (finding #5)
+                if alias.name == "*":
+                    self._flag(
+                        node,
+                        "banned_import",
+                        f"Wildcard import 'from {mod} import *' is not permitted — "
+                        f"banned inferential functions cannot be tracked through wildcard imports.",
+                    )
+                    continue
                 local = alias.asname if alias.asname else alias.name
                 if mod == "scipy" and alias.name == "stats":
                     self._scipy_stats_aliases.add(local)
                 elif mod == "scipy.stats":
                     # `from scipy.stats import ttest_ind` — register as direct name
                     if alias.name in BANNED_SCIPY_STATS_FUNCS:
-                        # It will be caught as a plain Name call later;
-                        # tag it so we can detect it without module qualifier
                         self._scipy_stats_aliases.add(f"__direct__{local}")
                     self._scipy_stats_aliases.add(f"__ss_member__{local}__{alias.name}")
 
@@ -200,10 +215,23 @@ class S5Checker(ast.NodeVisitor):
         if mod.startswith("statsmodels"):
             if "power" not in mod:
                 self._statsmodels_imported = True
+                for alias in node.names:
+                    local = alias.asname if alias.asname else alias.name
+                    self._statsmodels_aliases.add(local)
             else:
                 for alias in node.names:
                     local = alias.asname if alias.asname else alias.name
                     self._statsmodels_power_aliases.add(local)
+
+        # Track bare names imported from subprocess/os modules (finding #6)
+        # e.g. `from os import system` → flag `system(...)` as a bare call
+        _SUBPROCESS_SOURCE_MODULES = {"os", "subprocess", "pty"}
+        if mod in _SUBPROCESS_SOURCE_MODULES or mod.split(".")[0] in _SUBPROCESS_SOURCE_MODULES:
+            for alias in node.names:
+                local = alias.asname if alias.asname else alias.name
+                canonical = f"{mod}.{alias.name}"
+                if canonical in BANNED_SUBPROCESS_FUNCS:
+                    self._bare_subprocess_names.add(local)
 
         self.generic_visit(node)
 
@@ -248,19 +276,18 @@ class S5Checker(ast.NodeVisitor):
                         f"('{value.id}' is bound to pingouin)",
                     )
 
-            # ---- statsmodels .fit() — only if statsmodels is imported
-            #      ALLOWED exception: statsmodels.stats.power objects
-            if attr_name == "fit" and self._statsmodels_imported:
-                # Try to determine if the object is a power object (allowed)
-                caller_name = None
-                if isinstance(value, ast.Name):
-                    caller_name = value.id
+            # ---- statsmodels .fit() — only when receiver is a statsmodels object
+            #      (finding #7: don't flag sklearn .fit() just because statsmodels
+            #      is imported somewhere in the script)
+            if attr_name == "fit":
+                caller_name = value.id if isinstance(value, ast.Name) else None
+                is_statsmodels_obj = caller_name in self._statsmodels_aliases
                 is_power = caller_name in self._statsmodels_power_aliases
-                if not is_power:
+                if is_statsmodels_obj and not is_power:
                     self._flag(
                         node,
                         "statsmodels_fit",
-                        f"Call to .fit() with statsmodels imported — "
+                        f"Call to .fit() on statsmodels object '{caller_name}' — "
                         f"model fitting (inferential) is not allowed in S5.",
                     )
 
@@ -377,12 +404,29 @@ class S5Checker(ast.NodeVisitor):
                     )
 
         # ---- Gap 4: subprocess / shell execution ----------------------------
-        if func_dotted in BANNED_SUBPROCESS_FUNCS:
+        # Resolve the leading alias to its canonical module before checking
+        # e.g. `import os as x; x.system(...)` → func_dotted = "x.system"
+        # → resolved = "os.system" (finding #8)
+        resolved_dotted = func_dotted
+        if func_dotted:
+            parts = func_dotted.split(".", 1)
+            if len(parts) == 2 and parts[0] in self._import_alias_map:
+                resolved_dotted = f"{self._import_alias_map[parts[0]]}.{parts[1]}"
+        if resolved_dotted in BANNED_SUBPROCESS_FUNCS:
             self._flag(
                 node,
                 "subprocess_execution",
                 "Subprocess/shell execution is not permitted in S5 scripts — "
                 "banned inferential code may be executed in a child process.",
+            )
+        # Bare names imported from os/subprocess (finding #6)
+        # e.g. `from os import system; system('cmd')`
+        if func_simple in self._bare_subprocess_names:
+            self._flag(
+                node,
+                "subprocess_execution",
+                f"Call to bare '{func_simple}()' imported from a subprocess/os module — "
+                "shell execution is not permitted in S5 scripts.",
             )
 
         self.generic_visit(node)

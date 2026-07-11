@@ -11,6 +11,7 @@ Exit codes:
 """
 
 import argparse
+import datetime
 import hashlib
 import os
 import re
@@ -50,13 +51,17 @@ def validate(state_path, study_root):
     with open(state_path, "r", encoding="utf-8") as fh:
         raw = fh.read()
 
-    # project_state.md is a YAML file; strip a possible markdown code fence
+    # project_state.md is a YAML file; strip the outermost markdown code fence
+    # only — do not remove interior backtick lines inside YAML block scalars
+    # (finding #15).
     stripped = raw.strip()
     if stripped.startswith("```"):
         lines = stripped.splitlines()
-        # drop opening fence line and closing fence line
-        inner = [l for l in lines[1:] if l.strip() != "```"]
-        stripped = "\n".join(inner)
+        # Remove only the first line (opening fence) and last line (closing fence)
+        end = len(lines) - 1
+        while end > 0 and lines[end].strip() == "```":
+            end -= 1
+        stripped = "\n".join(lines[1:end + 1])
 
     try:
         doc = yaml.safe_load(stripped)
@@ -107,8 +112,15 @@ def validate(state_path, study_root):
         )
 
     # -------------------------------------------------------- entered_at
+    # PyYAML deserializes unquoted YAML dates (e.g. 2026-07-10) as datetime.date
+    # objects, not strings. Accept both datetime.date and datetime.datetime as
+    # valid, in addition to ISO-8601 strings (finding #13).
     entered_at = doc["entered_at"]
-    if not check_iso8601(str(entered_at) if entered_at is not None else ""):
+    entered_at_ok = (
+        isinstance(entered_at, (datetime.date, datetime.datetime))
+        or check_iso8601(str(entered_at) if entered_at is not None else "")
+    )
+    if not entered_at_ok:
         violations.append(
             f"'entered_at' must be an ISO-8601 datetime string; got: {entered_at!r}"
         )

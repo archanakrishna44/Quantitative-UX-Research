@@ -6,16 +6,24 @@ export PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FAIL=0
 
 # 1. Verify system_prompt.sha256
+# Pass the path as a Python argument to avoid shell injection via $PROJECT_ROOT.
 STORED=$(cat "$PROJECT_ROOT/agent/system_prompt.sha256" 2>/dev/null)
-ACTUAL=$(python3 -c "import hashlib; print(hashlib.sha256(open('$PROJECT_ROOT/agent/system_prompt.md','rb').read()).hexdigest())" 2>/dev/null)
-if [ "$STORED" != "$ACTUAL" ]; then
+ACTUAL=$(python3 - "$PROJECT_ROOT/agent/system_prompt.md" 2>/dev/null <<'EOF'
+import hashlib, sys
+print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())
+EOF
+)
+if [ -z "$ACTUAL" ]; then
+  echo "HASH MISMATCH: could not compute hash of system_prompt.md (python3 unavailable or failed)"
+  FAIL=1
+elif [ "$STORED" != "$ACTUAL" ]; then
   echo "HASH MISMATCH: system_prompt.md has changed since last verified."
   echo "  stored: $STORED"
   echo "  actual: $ACTUAL"
   FAIL=1
 fi
 
-# 2. Verify agent_manifest.sha256 (all 3 config files)
+# 2. Verify agent_manifest.sha256 (all config files)
 python3 - <<'PYEOF'
 import json, hashlib, sys, os
 root = os.environ.get('PROJECT_ROOT', '')
@@ -46,13 +54,17 @@ sys.exit(1 if fail else 0)
 PYEOF
 [ $? -ne 0 ] && FAIL=1
 
-# 3. Check for active study (project_state.md in cwd)
-if [ -f "./project_state.md" ]; then
-  STATE=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('./project_state.md')); print(d.get('current_state','UNKNOWN'))" 2>/dev/null || echo "PARSE ERROR")
-  STUDY=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('./project_state.md')); print(d.get('study_name','unknown'))" 2>/dev/null || echo "unknown")
-  echo "RESUME: study=$STUDY state=$STATE"
-else
-  echo "NO ACTIVE STUDY: begin at S1"
+# 3. Check for active study — only if integrity checks passed.
+# Studies live at studies/<study_name>/project_state.md, not at the project root.
+if [ $FAIL -eq 0 ]; then
+  STATE_FILE=$(find studies -maxdepth 2 -name project_state.md 2>/dev/null | head -1)
+  if [ -n "$STATE_FILE" ]; then
+    STATE=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('$STATE_FILE')); print(d.get('current_state','UNKNOWN'))" 2>/dev/null || echo "PARSE ERROR")
+    STUDY=$(python3 -c "import yaml,sys; d=yaml.safe_load(open('$STATE_FILE')); print(d.get('study_name','unknown'))" 2>/dev/null || echo "unknown")
+    echo "RESUME: study=$STUDY state=$STATE"
+  else
+    echo "NO ACTIVE STUDY: begin at S1"
+  fi
 fi
 
 if [ $FAIL -eq 0 ]; then

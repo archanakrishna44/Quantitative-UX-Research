@@ -158,16 +158,19 @@ def check_small_cells(lines):
 
 def check_apa7_presence(lines):
     """
-    Return True if at least one line contains a stat marker paired with p = and CI [.
+    Return True if a stat marker, p-value, and CI all appear within a 3-line window.
+    APA-7 Markdown tables typically spread these across adjacent rows, so checking
+    a single line causes false failures on valid output (finding #9).
     """
     stat_compiled = [re.compile(p, re.IGNORECASE) for p in APA_STAT_MARKERS]
     p_compiled = re.compile(APA_P_VALUE, re.IGNORECASE)
     ci_compiled = re.compile(APA_CI, re.IGNORECASE)
 
-    for line in lines:
-        has_stat = any(pat.search(line) for pat in stat_compiled)
-        has_p = p_compiled.search(line)
-        has_ci = ci_compiled.search(line)
+    for i in range(len(lines)):
+        window = " ".join(lines[i:i + 3])
+        has_stat = any(pat.search(window) for pat in stat_compiled)
+        has_p = p_compiled.search(window)
+        has_ci = ci_compiled.search(window)
         if has_stat and has_p and has_ci:
             return True
     return False
