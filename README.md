@@ -45,10 +45,19 @@ That is the entire setup. Everything else (pandas, scipy, python-docx, pyyaml, a
 
 ## Getting the project onto your machine
 
-Either works:
+**Option 1 — Download ZIP (recommended; no extra tools needed):**
 
-- **Download ZIP** (simplest): on the GitHub page, choose **Code → Download ZIP**, then fully extract it (on Windows: right-click → **Extract All** — don't work inside the zip preview) into a permanent location such as your Documents folder. This project folder is what you will open in Claude Code.
-- **git clone**, if you use git.
+1. On the project's GitHub page, choose **Code → Download ZIP**.
+2. Fully extract the ZIP. On Windows: right-click the file and choose **Extract All** — don't browse into the zip preview, or nothing will work.
+3. Move the extracted folder to a permanent location. This folder is what you will open in Claude Code.
+
+**Option 2 — git clone (for git users):**
+
+1. Run:
+   ```
+   git clone https://github.com/archanakrishna44/Quantitative-UX-Research.git
+   ```
+2. The cloned folder is what you will open in Claude Code.
 
 ---
 
