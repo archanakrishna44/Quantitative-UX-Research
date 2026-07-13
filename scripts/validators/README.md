@@ -65,9 +65,9 @@ python3 validate_s5_script.py <path_to_python_script>
 
 **Banned patterns (any of these = FAIL):**
 - `scipy.stats` hypothesis tests: `ttest_1samp`, `ttest_ind`, `ttest_rel`, `f_oneway`, `kruskal`, `mannwhitneyu`, `wilcoxon`, `chi2_contingency`, `fisher_exact`, `spearmanr`, `pearsonr`, `kendalltau`, `ks_2samp`, `shapiro`, `normaltest`, `anderson`
-- `.fit()` calls on any object when `statsmodels` is imported (except `statsmodels.stats.power` objects)
+- `.fit()` calls on any object, including chained calls like `sm.OLS(y, X).fit()` — S5 permits no model fitting (except `statsmodels.stats.power` objects)
 - `pingouin` functions: `ttest`, `anova`, `ancova`, `rm_anova`, `mixed_anova`, `manova`, `pairwise_tests`, `mediation_analysis`, `logistic_regression`
-- Any `.pvalue` attribute access
+- Any `.pvalue` or `.pvalues` attribute access
 - Import of `pymc`, `bambi`, or `stan`
 
 Aliased imports are tracked (e.g., `import scipy.stats as ss; ss.ttest_ind()` is caught).
@@ -119,8 +119,8 @@ python3 validate_dry_run_byte_identical.py <dry_run_dir> <current_output_dir>
 - For each file, finds the corresponding file in `current_output_dir` (same relative path)
 - Compares byte-by-byte for binary files
 - For `.log` and `.txt` files: compares line-by-line after stripping lines that begin with `YYYY-MM-DD` (timestamp-tolerant)
-- Reports: matched files, differing files (with size difference), missing files, and extra files (informational)
-- Fails if any file differs or is missing from the current output
+- Reports: matched files, differing files (with size difference), missing files, and extra files
+- Fails if any file differs, is missing from the current output, or is extra in the current output (OS metadata files like `.DS_Store` are ignored)
 
 **Exit codes:** `0` = all files match (PASS), `1` = any file differs or is missing (FAIL)
 

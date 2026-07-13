@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 Now I have sufficient research to compile the comprehensive checklist. Let me synthesize all findings into a structured document.
 
 ---

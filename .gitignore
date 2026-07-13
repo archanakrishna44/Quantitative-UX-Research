@@ -19,3 +19,6 @@ venv/
 
 # Obsidian editor config — personal, not part of the agent
 .obsidian/
+
+# Claude Code machine-local settings — personal, never share
+.claude/settings.local.json

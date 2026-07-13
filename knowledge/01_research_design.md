@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # Research Design
 
 ## UX-Specific Design Decisions

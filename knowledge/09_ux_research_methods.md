@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # UX Research Methods — S3 Reference
 
 This file supports the QRA's S3 method recommendation. Use it to match research goals to the right method, understand what data each method produces, and identify the appropriate statistical test. For statistical test details, see `04_statistical_methods.md`.

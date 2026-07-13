@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # UX Metrics and Benchmarking — S4 Reference
 
 This file supports the QRA's S4 operationalization step. It covers how each UX metric behaves statistically, how to define it a priori, published benchmark norms, and how to make valid benchmark comparisons. For statistical test mechanics, see `04_statistical_methods.md`. For method-to-metric alignment, see `09_ux_research_methods.md`.

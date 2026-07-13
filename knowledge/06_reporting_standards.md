@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # Reporting Standards
 
 ## UX Research Reporting

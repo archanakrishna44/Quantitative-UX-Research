@@ -91,6 +91,8 @@ Convert the framing into a complete S2 output — all of the following are requi
 
 If any of these six elements cannot be determined from the S1 intake, ask the clarifying question before presenting the S2 output — do not present an incomplete S2 and wait for the user to notice what is missing.
 
+**Plain-language summary (required):** Immediately before requesting approval, present a 3–5 sentence summary with no statistical jargon stating: (1) what this output commits the study to, (2) what it deliberately rules out, and (3) the one or two things the researcher should sanity-check from their own knowledge before approving. The summary must not introduce any claim absent from the technical output above it — it is a restatement, not an addition. Include the summary in the locked artifact.
+
 **HARD HALT**: Present the complete output above and explicitly request approval with the text "APPROVAL REQUIRED". Do NOT proceed until the user replies with the literal token `APPROVED S2` (case-insensitive). (token matching rules: see Operating Rule 3). If the user edits, revise and re-request approval.
 
 After approval is received, write the approved primary research question, primary hypothesis (H0/H1), unit of analysis, and population verbatim to `studies/<study_name>/s2_locked.md` with an ISO-8601 timestamp. Compute a SHA-256 hash of the file contents and record it in `project_state.md` under `locked_artifacts`.
@@ -149,7 +151,7 @@ Record the consultation as: `specialist_consultation: <name or role>, <date>, <b
 
 If any required element above cannot be determined from S1 and S2, ask the clarifying question before presenting the S3 output — do not present an incomplete S3 and wait for the user to notice what is missing.
 
-**HARD HALT**: Present the complete output above and request approval with the text "APPROVAL REQUIRED". Do NOT proceed until the user replies with the literal token `APPROVED S3` (case-insensitive). (token matching rules: see Operating Rule 3).
+**HARD HALT**: Present the complete output above and request approval with the text "APPROVAL REQUIRED". Do NOT proceed until the user replies with the literal token `APPROVED S3` (case-insensitive). (token matching rules: see Operating Rule 3). If the user edits, revise and re-request approval.
 
 After approval is received, write the approved study design and method recommendation verbatim to `studies/<study_name>/s3_locked.md` with an ISO-8601 timestamp. Compute a SHA-256 hash of the file contents and record it in `project_state.md` under `locked_artifacts`.
 
@@ -161,14 +163,16 @@ After approval is received, write the approved study design and method recommend
 1. **Study type** — name the UX research method chosen in S3 and the tool or platform to be used (e.g. Qualtrics, SurveyMonkey, Maze, Optimal Workshop). If platform is unknown, flag it as an open question.
 2. **Variable table** — for every variable: name, role (IV/DV/covariate/moderator/mediator), level of measurement, operational definition (use UX-native metrics where relevant: task completion rate, time on task, error rate, SUS, UMUX-Lite, SEQ, tree test success rate, directness score, etc.), instrument/source, expected range, missing-data code. Do not omit any variable mentioned in S2 or S3.
 3. **Recruitment criteria** — link explicitly to the screener and sample defined in S1. Confirm the S4 criteria match S1 inclusion/exclusion criteria; flag any discrepancy.
-4. **Power analysis artifact** — produce `studies/<study_name>/power_analysis.md` containing: chosen test, assumed effect size with cited source (or explicit 'smallest effect size of interest' justification), alpha, target power (default 0.80; hard floor 0.80 for confirmatory studies), one- vs two-sided designation, and the computed n with the exact `statsmodels.stats.power` call recorded. If the achievable n given stated constraints yields power < 0.80 for the planned effect size, HALT and require the user to either (a) raise n, (b) raise the smallest effect size of interest with justification, or (c) reclassify the study as exploratory and remove confirmatory hypotheses from S2.
+4. **Power analysis artifact** — produce `studies/<study_name>/power_analysis.md` containing: chosen test, assumed effect size with cited source (or explicit 'smallest effect size of interest' justification), alpha, target power (default 0.80; hard floor 0.80 for confirmatory studies), one- vs two-sided designation, and the computed n with the exact `statsmodels.stats.power` call recorded. If the achievable n given stated constraints yields power < 0.80 for the planned effect size, HALT and require the user to either (a) raise n, (b) raise the smallest effect size of interest with justification, or (c) reclassify the study as exploratory and remove confirmatory hypotheses from S2 — option (c) modifies an approved S2 artifact, so it requires the formal `REGRESS TO S2` protocol (Operating Rule 9); never edit `s2_locked.md` in place.
 5. **Data collection procedure** — step-by-step, matched to the UX research method chosen in S3.
 6. **Data quality checks** — list the checks that will be applied before analysis (e.g. straight-liner detection, out-of-range values, minimum completion time, attention checks).
 7. **Privacy and ethics plan** — how participant data will be stored, who has access, how confidentiality is protected, and whether participants have been informed. Flag any gaps as ethics checkpoints.
 
 If any required element cannot be determined from S1, S2, and S3, ask the clarifying question before presenting the S4 output — do not present an incomplete plan and wait for the user to notice what is missing.
 
-**HARD HALT**: Present the complete data plan and request approval with the text "APPROVAL REQUIRED". Do NOT proceed until the user replies with the literal token `APPROVED S4` (case-insensitive). (token matching rules: see Operating Rule 3).
+**Plain-language summary (required):** Immediately before requesting approval, present a 3–5 sentence summary with no statistical jargon stating: (1) what this data plan commits the study to, (2) what it deliberately rules out, and (3) the one or two things the researcher should sanity-check from their own knowledge before approving (e.g. whether the target sample size matches the recruiting pool they can actually reach). The summary must not introduce any claim absent from the technical output above it — it is a restatement, not an addition. Include the summary in the locked artifact.
+
+**HARD HALT**: Present the complete data plan and request approval with the text "APPROVAL REQUIRED". Do NOT proceed until the user replies with the literal token `APPROVED S4` (case-insensitive). (token matching rules: see Operating Rule 3). If the user edits, revise and re-request approval.
 
 After approval is received, write the approved data plan verbatim to `studies/<study_name>/s4_locked.md` with an ISO-8601 timestamp. Compute a SHA-256 hash of the file contents and record it in `project_state.md` under `locked_artifacts`.
 
@@ -194,7 +198,7 @@ Every output in this state MUST be labeled **"EXPLORATORY — NOT FOR INFERENCE"
 
 **Validator (mandatory — run after PII scan, before executing any exploratory script):** Run:
 ```
-python3 scripts/validators/validate_s5_script.py <script_path>
+studies/<study_name>/.venv/bin/python3 scripts/validators/validate_s5_script.py <script_path>
 ```
 If exit code ≠ 0, HALT and surface the full validator output to the user. Do not execute the script until it passes. The validator enforces the descriptive-only contract at the AST level — see `scripts/validators/README.md`.
 
@@ -210,14 +214,14 @@ The primary test specification in the locked plan MUST be derivable from S2 (out
 **Required output — produce all of the following on the first attempt. Do not wait for the user to ask for missing pieces:**
 
 1. **S2/S4 citations for every test choice** — for each RQ, explicitly cite which S2 statement (outcome type, design structure) and which S4 statement (measurement level, expected distribution) drove the test selection. Example: "Friedman χ² selected because S2 specifies a within-subjects repeated-measures design and S4 specifies ordinal measurement (5-point Likert)." If the reasoning is not traceable to S2/S4, the test choice is not pre-registered.
-2. **Primary analysis** — exact model specification, estimator, software, version, random seed.
+2. **Primary analysis** — exact model specification, estimator, software, version, random seed, and the `causal_identification_strategy` (one of: `none`, `RCT_ITT`, `DiD`, `IV`, `RDD`, `propensity_matching`, `DAG_adjustment` — `none` unless the design supports causal inference). This exact value is passed to `validate_results_md.py --causal-strategy` at S7.
 3. **Missing data handling** — method and assumptions, stated before data is seen.
 4. **Outlier rule** — exact rule as executable pseudo-code, the variable(s) it applies to, and the expected exclusion rate. Include a pre-specified robustness check that re-runs the primary analysis with no exclusions. Any exclusion rule introduced after S6 lock is a material deviation.
 5. **Multiple-comparison plan** — enumerate every test in the confirmatory family by name, state the correction method (default: Holm-Bonferroni; Benjamini-Hochberg if FDR is explicitly justified), family size, and family-wise alpha. The family is frozen at S6 lock; any test added after lock is exploratory regardless of result. If only one primary test exists, state: 'No correction needed; family size = 1.'
 6. **Decision rule for every hypothesis** — state explicitly what result constitutes support for H1 and what constitutes failure to support H1. Example: "H1 for RQ1 is supported if Friedman χ² p < 0.05 AND Kendall's W ≥ 0.10 (small effect threshold)." Do not leave this implicit — a decision rule that is not pre-specified can be chosen post-hoc to favor a desired conclusion.
 7. **Robustness checks** — list any planned sensitivity analyses.
 8. **Stopping rules** — if sequential testing applies; otherwise state 'Not applicable — fixed sample.'
-9. **Environment** — exact random seed (integer), Python version, and `requirements.txt` produced by running `python3 -m pip freeze > studies/<study_name>/requirements.txt` at lock time.
+9. **Environment** — exact random seed (integer), Python version, and `requirements.txt` produced by running `studies/<study_name>/.venv/bin/python3 -m pip freeze > studies/<study_name>/requirements.txt` at lock time (the study venv, not the system Python — the frozen list must describe the environment the analysis actually runs in).
 
 If any required element cannot be determined from S2, S3, and S4, ask the clarifying question before presenting the S6 output — do not present an incomplete plan and wait for the user to notice what is missing.
 
@@ -227,16 +231,18 @@ Before locking, run the analysis script on a synthetic dataset (same column sche
 
 Before requesting approval, verify that `studies/<study_name>/dry_run/` exists and contains at least one output file. If the dry-run directory is missing or empty, run the dry-run now before presenting the locked plan for approval.
 
-**These steps are fully automated — run silently without narrating or pausing for user input.** The user's only interaction point in S6 is reviewing the locked plan and replying `APPROVED S6`. Do not describe what you are doing between steps; do not ask the user to confirm intermediate results; do not surface validator output unless a check fails.
+**These steps are fully automated — run silently without narrating or pausing for user input.** The user's only interaction point in S6 is reviewing the locked plan and replying `APPROVED S6`. Do not describe what you are doing between steps; do not ask the user to confirm intermediate results; do not surface validator output unless a check fails. Claude Code itself may ask the user to approve individual commands during this phase; that is expected and does not violate the silent-run rule. If the user declines a command, stop, state plainly which step was declined and what remains undone, and ask whether to retry — do not improvise an alternative command.
 
 **Validator (mandatory — run before requesting approval, silently):** Run `validate_project_state.py` — see `scripts/validators/README.md`. If exit code ≠ 0, fix the reported violations before proceeding. Do not surface passing validator output to the user.
 
-**HARD HALT**: Present the analysis plan and request approval with the text "APPROVAL REQUIRED". Do NOT proceed until the user replies with the literal token `APPROVED S6` (case-insensitive). (token matching rules: see Operating Rule 3). Do NOT run any inferential test on the primary outcome until approved. Save the approved plan to `studies/<study_name>/analysis_plan_locked.md` with the approval timestamp. Compute the SHA-256 of `analysis_plan_locked.md` and record it in `project_state.md` under `locked_artifacts`.
+**Plain-language summary (required):** Immediately before requesting approval, present a 3–5 sentence summary with no statistical jargon stating: (1) what this analysis plan commits the study to, (2) what it deliberately rules out (e.g. no tests beyond the named family will count as confirmatory), and (3) the one or two things the researcher should sanity-check from their own knowledge before approving (e.g. whether the primary outcome is the one their stakeholders will actually act on). The summary must not introduce any claim absent from the technical output above it — it is a restatement, not an addition. Include the summary in the locked artifact.
+
+**HARD HALT**: Present the analysis plan and request approval with the text "APPROVAL REQUIRED". Do NOT proceed until the user replies with the literal token `APPROVED S6` (case-insensitive). (token matching rules: see Operating Rule 3). If the user edits, revise and re-request approval. Do NOT run any inferential test on the primary outcome until approved. Save the approved plan to `studies/<study_name>/analysis_plan_locked.md` with the approval timestamp. Compute the SHA-256 of `analysis_plan_locked.md` and record it in `project_state.md` under `locked_artifacts`.
 
 **Validator (mandatory — run after writing each locked artifact):** Run `validate_locked_artifact.py` — see `scripts/validators/README.md`. If exit code ≠ 0, recompute the hash, rewrite `project_state.md`, and re-run.
 
 ### S7 — Confirmatory Analysis and Reporting
-**These steps are fully automated — run silently without narrating or pausing for user input.** The user's only interaction points in S7 are: (1) receiving the results, and (2) replying `STUDY CLOSED`. Do not describe what you are doing between steps; do not ask the user to confirm intermediate checks; do not surface validator output unless a check fails.
+**These steps are fully automated — run silently without narrating or pausing for user input.** The user's only interaction points in S7 are: (1) receiving the results, and (2) replying `STUDY CLOSED`. Do not describe what you are doing between steps; do not ask the user to confirm intermediate checks; do not surface validator output unless a check fails. Claude Code itself may ask the user to approve individual commands during this phase; that is expected and does not violate the silent-run rule. If the user declines a command, stop, state plainly which step was declined and what remains undone, and ask whether to retry — do not improvise an alternative command.
 
 At S7 start, silently: verify all predicate locks, re-run the byte-identical dry-run check, then execute the live analysis. Only surface output to the user when all checks pass and results are ready — or immediately if any check fails with a HALT.
 
@@ -245,7 +251,9 @@ At S7 start, silently: verify all predicate locks, re-run the byte-identical dry
 **Byte-identical dry-run check (silent):** Re-run the analysis script on the synthetic dataset into a system temp directory (use `mktemp -d` — never create the recheck directory inside the study folder), then run:
 ```
 TMPDIR=$(mktemp -d)
-python3 scripts/validators/validate_dry_run_byte_identical.py studies/<study_name>/dry_run/ $TMPDIR
+# 1. Re-run the analysis script on the synthetic dataset with its output directed into $TMPDIR
+# 2. Then compare:
+studies/<study_name>/.venv/bin/python3 scripts/validators/validate_dry_run_byte_identical.py studies/<study_name>/dry_run/ $TMPDIR
 rm -rf $TMPDIR
 ```
 If exit code ≠ 0, HALT and surface the full validator output. Do not execute the live analysis until this check passes. Always clean up the temp directory after the check regardless of outcome.
@@ -280,7 +288,7 @@ You do not need to open or edit any scripts — all results come to you in chat,
 - Render markdown tables as Word tables
 - Embed figures from `outputs/figures/` as inline images where referenced in results.md
 - Apply APA-7 compatible base styles (Times New Roman 12pt body, 1-inch margins)
-If `python-docx` is not installed, install it silently with `pip3 install python-docx` before running. Once the file is written, tell the user: "Your results report is ready as a Word document at `report/results.docx` — open it from your file manager." If the export fails, surface the error and offer to retry.
+Run the export script with the study venv interpreter (`python-docx` is installed into the per-study venv at creation). If it is missing, install it with `studies/<study_name>/.venv/bin/pip install python-docx` — never with a global `pip3 install`, which violates the venv rule and fails on externally-managed Pythons (PEP 668). Once the file is written, tell the user: "Your results report is ready as a Word document at `report/results.docx` — open it from your file manager." If the export fails, surface the error and offer to retry.
 
 After all S7 artifacts are produced and saved, present a one-paragraph study summary (methods, primary findings, effect sizes, limitations). If `sequencing_note` in `project_state.md` equals `"quant_first_accepted"`, and the study is being closed for the first time (i.e., `current_state` is S7 and the study has not previously reached ARCHIVED or been reopened — determine prior closure by scanning `state_log.jsonl` for any earlier entry with `to_state: ARCHIVED` or `event: study_reopened`), append a qual follow-up note after the study summary and before the `STUDY CLOSED` prompt. If the study is a reopen, skip the note. The note must be written as a brief handoff: name what the quantitative study found and suggest that a qualitative researcher could usefully explore the findings further. Do not prescribe what the qual study should do — that is outside QRA's scope. Then display: 'To close this study, reply `STUDY CLOSED`. This freezes the study directory.' On receipt of `STUDY CLOSED`, write `studies/<study_name>/CLOSED.md` with an ISO-8601 timestamp and the final artifact list. Append a closure entry to `state_log.jsonl` with `to_state: ARCHIVED`. Update `project_state.md` `current_state` to `ARCHIVED`. The study is now read-only; any further work requires `REOPEN STUDY <name>` which creates a new `state_log.jsonl` entry and re-enters S7.
 
@@ -330,12 +338,13 @@ Apply in order:
 
 ## Analysis Approach (Tooling)
 
-- All computation is **script-based**, executed via the **Bash tool** in Claude Code desktop.
+- All computation is **script-based**, executed via the **Bash tool** in Claude Code (desktop or terminal).
 - Save scripts to `studies/<study_name>/scripts/` with descriptive names (e.g., `s5_exploratory.py`, `s7_primary_analysis.py`).
 - **Do NOT use Jupyter notebooks**. Use `.py` scripts run from the command line.
 - Set and record a random seed in every script.
 - Save all outputs (tables as `.xlsx`, figures as `.png`, logs as `.txt`) to `studies/<study_name>/outputs/`.
-- On first use, create a per-study virtual environment: `python3 -m venv studies/<study_name>/.venv && studies/<study_name>/.venv/bin/pip install pandas numpy scipy statsmodels matplotlib openpyxl pingouin`. All Bash invocations of Python MUST use `studies/<study_name>/.venv/bin/python3`. Never use `pip install --user`.
+- On first use (the first time any Python must run for the study, including validators), create a per-study virtual environment: `python3 -m venv studies/<study_name>/.venv && studies/<study_name>/.venv/bin/pip install pandas numpy scipy statsmodels matplotlib openpyxl pingouin pyyaml python-docx`. All Bash invocations of Python MUST use `studies/<study_name>/.venv/bin/python3`. Never use `pip install --user`.
+- **Cross-platform note:** on Windows, venv executables live under `.venv/Scripts/` instead of `.venv/bin/` (e.g. `studies/<study_name>/.venv/Scripts/python`). If `python3` is not on PATH (common on Windows), substitute `python` or `py -3` wherever this document says `python3`.
 
 Your only steps as a team member are:
 1. Drop your Excel/CSV into the `data/raw/` folder using your file manager.
@@ -347,7 +356,7 @@ Your only steps as a team member are:
 > Worked examples for all structured artifacts are in `agent/examples/`. Consult them when writing any artifact.
 
 1. One state at a time. Never act outside the active state.
-2. Persist state to `./project_state.md` after every transition.
+2. Persist state to `studies/<study_name>/project_state.md` after every transition.
 3. At hard-halt gates, the literal phrase "**APPROVAL REQUIRED**" must appear in your response. The user must reply with the literal token `APPROVED S<n>` (case-insensitive, where `<n>` is the gate number: S2, S3, S4, or S6). Any other reply — including 'ok', 'looks good', 'go ahead', or silence — must be treated as not-approved; re-present the gate and quote this rule. S1 uses a soft-gate token `FRAMING CONFIRMED` (not a hard-halt gate). All other gate tokens follow the `APPROVED S<n>` pattern. Full token vocabulary: `FRAMING CONFIRMED` (S1), `APPROVED S2`, `APPROVED S3`, `APPROVED S4`, `S5 ACCEPTED`, `APPROVED S6`, `APPROVED DEVIATION <id>`, `REGRESS TO S<n>`, `STUDY CLOSED`, `REOPEN STUDY <name>`, `ETHICS CONFIRMED`, `CONFIRM PROMPT UPDATE`, `CANCEL SESSION`, `CREATE STUDY DIR`, `SWITCH STUDY`.
 
 **Token matching rules**: Token recognition is case-insensitive. Before matching, strip leading and trailing whitespace and trailing punctuation (`.`, `,`, `!`, `?`). Normalize internal whitespace to a single space. Treat curly/smart quotes (`'`, `'`, `"`, `"`) as straight quotes. A token embedded in a longer message (e.g., `APPROVED S2` followed by a prohibited request) satisfies the gate condition but the prohibited request is separately refused — the gate advances and the refusal is issued in the same response.

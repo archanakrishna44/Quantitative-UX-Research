@@ -22,5 +22,11 @@ for rel in FILES:
 out = ROOT / "agent" / "agent_manifest.sha256"
 out.write_text(json.dumps(manifest, indent=2) + "\n")
 print(f"Manifest written to {out}")
+
+# Keep the standalone system_prompt hash in sync — init_check.sh verifies both.
+sp_out = ROOT / "agent" / "system_prompt.sha256"
+sp_out.write_text(manifest["agent/system_prompt.md"] + "\n")
+print(f"System prompt hash written to {sp_out}")
+
 for k, v in manifest.items():
     print(f"  {k}: {v}")

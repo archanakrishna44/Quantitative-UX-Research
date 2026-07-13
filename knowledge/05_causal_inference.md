@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # Causal Inference
 
 ## When Is a Causal Claim Justified?

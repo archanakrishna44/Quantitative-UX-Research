@@ -31,11 +31,17 @@ def _is_timestamp_tolerant(filename):
     return ext in TIMESTAMP_TOLERANT_EXTENSIONS
 
 
+# OS metadata files that must never affect the comparison result.
+IGNORED_FILENAMES = {".DS_Store", "Thumbs.db", "desktop.ini"}
+
+
 def _collect_files(root_dir):
     """Return a dict of {relative_path: absolute_path} for all files under root_dir."""
     file_map = {}
     for dirpath, _dirnames, filenames in os.walk(root_dir):
         for fname in filenames:
+            if fname in IGNORED_FILENAMES:
+                continue
             abs_path = os.path.join(dirpath, fname)
             rel_path = os.path.relpath(abs_path, root_dir)
             file_map[rel_path] = abs_path

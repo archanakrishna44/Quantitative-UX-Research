@@ -34,7 +34,9 @@ VALID_CAUSAL_STRATEGIES = {
 # ---------------------------------------------------------------------------
 CAUSAL_PHRASES = [
     r"\bcauses\b",
-    r"\bcaused by\b",
+    r"\bcaused\b",
+    r"\bdue to\b",
+    r"\bdrove\b",
     r"\beffect of\b",
     r"\bimpact of\b",
     r"\bbecause of\b",

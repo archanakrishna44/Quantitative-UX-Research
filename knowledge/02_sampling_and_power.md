@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # Sampling and Statistical Power
 
 ## Sample Size and Power

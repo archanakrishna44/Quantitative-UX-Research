@@ -19,7 +19,7 @@ QRA functions as a quantitative research teammate on any UX project. You describ
 - Deploying the data collection instrument — setting up the survey, running the tree test, configuring the A/B test, or pulling the analytics export
 - Bringing the collected data file back to QRA for analysis
 
-QRA can also work alongside qualitative research. If your project includes a qualitative phase — interviews, diary studies, card sorts, or similar — tell the agent during the initial scoping conversation. QRA will assess the situation and advise on sequencing. Sometimes qual first makes sense (e.g. interviews to generate hypotheses, then a survey to validate at scale); sometimes a quantitative baseline first makes the qualitative work sharper (e.g. a survey to identify segments before deciding who to interview and what to ask). QRA will recommend the stronger sequence with a brief rationale — you can accept or proceed with your original plan. You conduct the qualitative work independently; QRA handles the quantitative study.
+QRA can also work alongside qualitative research. If your project includes a qualitative phase — interviews, diary studies, or similar — tell the agent during the initial scoping conversation. QRA will assess the situation and advise on sequencing. Sometimes qual first makes sense (e.g. interviews to generate hypotheses, then a survey to validate at scale); sometimes a quantitative baseline first makes the qualitative work sharper (e.g. a survey to identify segments before deciding who to interview and what to ask). QRA will recommend the stronger sequence with a brief rationale — you can accept or proceed with your original plan. You conduct the qualitative work independently; QRA handles the quantitative study.
 
 The agent runs a strict seven-stage workflow and will not skip ahead. It will not run a statistical test before the analysis plan is approved. This is intentional: the design prevents the most common ways research findings become indefensible — hypothesising after results are known, running multiple tests and reporting only the one that worked, or writing conclusions that overstate what the data can support.
 
@@ -36,26 +36,36 @@ QRA is designed for UX researchers and product teams, not engineers. You do not 
 
 Before starting, confirm these are in place:
 
-- **Claude Code desktop** — the app this agent runs inside. QRA uses Claude Code's Bash tool to execute analysis scripts on your machine.
-- **Python 3.10 or later** — required for the analysis scripts and validators. You may be prompted to install it automatically when you first run the agent.
-- **python-docx** — used to export results as a Word document. You may be prompted to install it automatically when you first run the agent.
-- **pyyaml** — required by the session integrity check and the S6 state validator. You may be prompted to install it automatically when you first run the agent.
+- **Claude Code** — desktop app or terminal; either works. QRA uses Claude Code's Bash tool to execute analysis scripts on your machine.
+- **Python 3.10 or later** — required for the analysis scripts and validators. If it is not installed, download it from [python.org](https://www.python.org/downloads/). On Windows, check **"Add python.exe to PATH"** during installation.
 
-No other setup is required. The agent creates all study folders and installs all analysis packages when you start a study.
+That is the entire setup. Everything else (pandas, scipy, python-docx, pyyaml, and the other analysis packages) is installed automatically by the agent into a private per-study environment when you start a study — it does not touch your system Python.
+
+---
+
+## Getting the project onto your machine
+
+Either works:
+
+- **Download ZIP** (simplest): on the GitHub page, choose **Code → Download ZIP**, then unzip it anywhere you like.
+- **git clone**, if you use git.
 
 ---
 
 ## How to start
 
-1. Open Claude Code desktop.
-2. Choose **File → Open Folder** and select the folder where you placed this project.
-3. In the chat panel, type:
+1. Open the project in Claude Code:
+   - **Desktop app:** choose **File → Open Folder** and select the project folder.
+   - **Terminal:** open a terminal in the project folder and run `claude`.
+2. In the chat panel, type:
 
    ```
    /qra
    ```
 
 The agent runs a silent integrity check, loads its configuration, and greets you. It will ask whether you want to start a new study or resume an existing one.
+
+**About permission prompts:** as you work, Claude Code will occasionally ask you to approve a command before the agent runs it on your machine. This is normal — it is Claude Code's built-in safety layer, not an error. The commands you will see create study folders, install analysis packages into a private per-study environment, and run the workflow's checking scripts. For the repeated checking-script commands, choosing "always allow" is expected and safe.
 
 To start a new study, give it a short name — for example, `lender_satisfaction_q3`. The agent creates the study folder automatically and walks you through the first stage.
 
@@ -75,7 +85,7 @@ QRA moves through exactly one stage at a time. Each stage produces a specific ou
 | S6 | Pre-Registered Analysis Plan | The agent writes the complete analysis plan — exact test, model specification, outlier rules, missing-data handling, and decision rules for every hypothesis — and runs it on a synthetic dataset to confirm it executes correctly. | Reply `APPROVED S6` |
 | S7 | Confirmatory Analysis and Reporting | The agent runs the locked plan on your data, writes `results.md` in APA 7 format, and exports `report/results.docx`. | Reply `STUDY CLOSED` |
 
-The four stages marked above (S2, S3, S4, S6) are hard-halt gates. The agent will not advance past them on a casual "looks good" or "ok." It requires the exact token listed. This is by design — see `agent/ARCHITECTURE.md` for the reasoning.
+The four stages marked above (S2, S3, S4, S6) are hard-halt gates. The agent will not advance past them on a casual "looks good" or "ok." It requires the exact token listed. At each gate, the agent also gives you a short plain-language summary of what you are approving — what the plan commits to, what it rules out, and what to double-check — so you never have to evaluate the statistics to approve with confidence. This is by design — see `agent/ARCHITECTURE.md` for the reasoning.
 
 ---
 
@@ -93,7 +103,7 @@ The full directory tree is documented in [`folder_structure.md`](folder_structur
 
 ## Approval tokens
 
-The agent accepts the following control tokens. These must be typed exactly as shown (they are not case-sensitive, and leading or trailing punctuation is ignored).
+The agent accepts the following control tokens. These must be typed exactly as shown (they are not case-sensitive; surrounding whitespace and trailing punctuation are ignored).
 
 | Token | When to use |
 |-------|-------------|

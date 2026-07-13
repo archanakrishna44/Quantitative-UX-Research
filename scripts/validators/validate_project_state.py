@@ -249,12 +249,8 @@ def _check_question_or_assumption(item, field_name, index, violations):
             violations.append(
                 f"'{field_name}[{index}]' is missing required key: '{required_key}'"
             )
-    # resolved_at_state is optional — no error if absent
-    allowed_keys = {"id", "text", "raised_at_state", "resolved_at_state"}
-    extra = set(item.keys()) - allowed_keys
-    if extra:
-        # Warn but do not fail on extra keys (forward-compatible)
-        pass
+    # resolved_at_state is optional — no error if absent.
+    # Extra keys are deliberately tolerated (forward-compatible).
 
 
 def _sha256_file(path):

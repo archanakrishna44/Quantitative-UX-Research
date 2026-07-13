@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # Measurement
 
 ## Attitudinal vs. Behavioral Measurement

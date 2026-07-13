@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # Ethics and Privacy
 
 ## Research Ethics Principles (Belmont Report)

@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # Statistical Methods
 
 ## UX Study Type → Statistical Test (Quick Lookup)

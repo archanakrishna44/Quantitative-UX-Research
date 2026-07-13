@@ -1,0 +1,9 @@
+# Normalize line endings: LF in repo and working tree on every platform.
+# Required — the session integrity check hashes raw file bytes, and CRLF
+# checkouts (Git for Windows default) would change every hash and break
+# bash execution of agent/init_check.sh.
+* text=auto eol=lf
+*.png binary
+*.xlsx binary
+*.docx binary
+*.pptx binary

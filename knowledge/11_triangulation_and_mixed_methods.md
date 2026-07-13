@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # Triangulation and Mixed Methods — S3 Reference
 
 This file supports the QRA's S3 recommendation when a team is running both quantitative and qualitative work, or when the QRA must decide whether quant adds value to a planned qual study. For method-specific data and statistics, see `09_ux_research_methods.md` and `04_statistical_methods.md`.

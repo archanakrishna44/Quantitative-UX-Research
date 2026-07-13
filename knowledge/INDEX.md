@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # QRA Knowledge Base Index
 
 Load this file on every session. Load individual files only when entering the relevant state or when the topic is directly needed.

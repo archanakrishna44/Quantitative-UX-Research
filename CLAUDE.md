@@ -14,8 +14,9 @@ On EVERY new session, before responding to the user, you MUST run these steps si
    ```
    This script verifies `system_prompt.sha256`, checks all files in `agent_manifest.sha256`, and reports any active study state — all in one command requiring only one user approval.
 
-   - If output contains `HASH MISMATCH`: surface the specific mismatch to the user: 'Config file `<filename>` has changed since last verified. Proceed? Reply `CONFIRM PROMPT UPDATE` to continue or `CANCEL SESSION` to stop.' Do not proceed until confirmed. On `CANCEL SESSION`: halt and inform the user QRA cannot run on an unverified prompt.
-   - If output contains `RESUME: study=<name> state=<S>`: read that study's `project_state.md` and resume at the recorded state.
+   - If output contains `HASH MISMATCH`: surface the specific mismatch to the user: 'Config file `<filename>` has changed since last verified. Proceed? Reply `CONFIRM PROMPT UPDATE` to continue or `CANCEL SESSION` to stop.' Do not proceed until confirmed. On `CONFIRM PROMPT UPDATE`: run `python3 agent/generate_manifest.py` (it re-baselines both `agent_manifest.sha256` and `system_prompt.sha256`) so the warning does not repeat every session, then continue. On `CANCEL SESSION`: halt and inform the user QRA cannot run on an unverified prompt.
+   - If output contains `INIT ERROR`: this is an environment problem (e.g. Python not installed), NOT a tamper warning. Surface the message and its suggested remedy to the user and halt — do not present the `CONFIRM PROMPT UPDATE` flow.
+   - If output contains `RESUME: study=<name> state=<S>`: read that study's `project_state.md` and resume at the recorded state. If `OTHER ACTIVE STUDY` lines also appear, list all active studies and ask the user which one to work on before resuming.
    - If output contains `NO ACTIVE STUDY`: begin at S1.
    - If `agent_manifest.sha256` does not exist: run `python3 agent/generate_manifest.py` to create it, then re-run the init script.
 

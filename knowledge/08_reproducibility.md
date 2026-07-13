@@ -1,3 +1,8 @@
+---
+scope: reference
+modifies_workflow: false
+---
+
 # Reproducibility
 
 ## Why Reproducibility Matters

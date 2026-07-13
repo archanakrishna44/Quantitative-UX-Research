@@ -103,8 +103,9 @@ class S5Checker(ast.NodeVisitor):
         import statements so that aliased calls are caught.
     2.  Detect `scipy.stats.<func>` attribute accesses (both direct and via
         an alias).
-    3.  Detect `.fit(` calls on names that were imported from statsmodels.
-    4.  Detect `.pvalue` attribute accesses anywhere.
+    3.  Detect `.fit(` calls on any object (S5 permits no model fitting;
+        only statsmodels power classes are exempt).
+    4.  Detect `.pvalue` / `.pvalues` attribute accesses anywhere.
     5.  Detect banned top-level imports (pymc, bambi, stan).
     """
 
@@ -276,19 +277,20 @@ class S5Checker(ast.NodeVisitor):
                         f"('{value.id}' is bound to pingouin)",
                     )
 
-            # ---- statsmodels .fit() — only when receiver is a statsmodels object
-            #      (finding #7: don't flag sklearn .fit() just because statsmodels
-            #      is imported somewhere in the script)
+            # ---- .fit() on any receiver — S5 is descriptive-only ("no model
+            #      fitting", system_prompt.md S5). Chained calls like
+            #      sm.OLS(y, X).fit() have a Call receiver, not a Name, so the
+            #      receiver type must not gate this check. Only the allowed
+            #      statsmodels power classes are exempt.
             if attr_name == "fit":
                 caller_name = value.id if isinstance(value, ast.Name) else None
-                is_statsmodels_obj = caller_name in self._statsmodels_aliases
                 is_power = caller_name in self._statsmodels_power_aliases
-                if is_statsmodels_obj and not is_power:
+                if not is_power:
                     self._flag(
                         node,
-                        "statsmodels_fit",
-                        f"Call to .fit() on statsmodels object '{caller_name}' — "
-                        f"model fitting (inferential) is not allowed in S5.",
+                        "model_fit",
+                        "Call to .fit() — model fitting (inferential) is "
+                        "not allowed in S5.",
                     )
 
         # ---- plain name call: ttest_ind(...) from `from scipy.stats import ttest_ind`
@@ -434,12 +436,12 @@ class S5Checker(ast.NodeVisitor):
     # ------------------------------------------------------------------ attribute accesses
 
     def visit_Attribute(self, node):
-        # .pvalue anywhere
-        if node.attr == "pvalue":
+        # .pvalue / .pvalues (statsmodels uses the plural) anywhere
+        if node.attr in ("pvalue", "pvalues"):
             self._flag(
                 node,
                 "pvalue_access",
-                f"Access to .pvalue attribute — "
+                f"Access to .{node.attr} attribute — "
                 f"p-values must not be computed or referenced in S5.",
             )
 

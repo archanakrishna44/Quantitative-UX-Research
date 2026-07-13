@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash agent/init_check.sh)",
+      "Bash(python3 agent/generate_manifest.py)",
+      "Bash(python3 scripts/s5_pii_scan.py:*)",
+      "Bash(python3 scripts/validators/validate_project_state.py:*)",
+      "Bash(python3 scripts/validators/validate_locked_artifact.py:*)",
+      "Bash(python3 scripts/validators/validate_s5_script.py:*)",
+      "Bash(python3 scripts/validators/validate_results_md.py:*)",
+      "Bash(python3 scripts/validators/validate_dry_run_byte_identical.py:*)"
+    ]
+  }
+}
