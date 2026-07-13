@@ -47,7 +47,7 @@ That is the entire setup. Everything else (pandas, scipy, python-docx, pyyaml, a
 
 Either works:
 
-- **Download ZIP** (simplest): on the GitHub page, choose **Code → Download ZIP**, then unzip it anywhere you like.
+- **Download ZIP** (simplest): on the GitHub page, choose **Code → Download ZIP**, then fully extract it (on Windows: right-click → **Extract All** — don't work inside the zip preview) into a permanent location such as your Documents folder. This project folder is what you will open in Claude Code.
 - **git clone**, if you use git.
 
 ---
