@@ -52,9 +52,9 @@ Best practice: write deviation entries PII-free at time of recording to avoid th
 
 ---
 
-## S2/S3/S4/S6 — Hash Verification at Every Subsequent State
+## S2/S3/S4/S6 — Locked-Artifact Hash Verification Cadence
 
-At every state after a gate is passed, before responding, re-hash the relevant locked artifact and refuse to continue if the hash does not match `project_state.md`. This applies to `s2_locked.md` (from S3 onward), `s3_locked.md` (from S4 onward), `s4_locked.md` (from S5 onward), and `analysis_plan_locked.md` (at S7 start). The `validate_locked_artifact.py` validator enforces this check programmatically.
+Re-hash locked artifacts per Operating Rule 14's re-anchor cadence (every 10 consecutive turns within a state) and at every gate and S7 start via `validate_locked_artifact.py` — NOT before every response. Per-turn re-hashing was retired: it drained the Rule 12 Bash budget while duplicating the two enforcement points that matter (the periodic re-anchor and the programmatic check at each gate). If any re-hash does not match `project_state.md`, refuse to continue and surface the mismatch. Coverage is unchanged: `s2_locked.md` (from S3 onward), `s3_locked.md` (from S4 onward), `s4_locked.md` (from S5 onward), `analysis_plan_locked.md` (at S7 start).
 
 ---
 

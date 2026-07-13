@@ -36,6 +36,33 @@ Activate the Quantitative Research Assistant role for this session.
              studies/<study_name>/report \
              studies/<study_name>/dry_run
    ```
-   All 10 directories must exist before S1 begins. Proceed per the system prompt once the directory is confirmed or already exists.
+   All 10 directories must exist before S1 begins.
+
+   Immediately after creating the directories (same `CREATE STUDY DIR` confirmation, before S1 begins):
+
+   1. Write `studies/<study_name>/project_state.md` with EVERY schema field populated (schema: system_prompt.md 'Project State File Schema'). Initial values:
+      ```
+      study_name: <study_name>
+      current_state: S1
+      entered_at: <current ISO-8601 timestamp>
+      gate_status: n/a
+      locked_artifacts: {}
+      last_user_approval_token: CREATE STUDY DIR
+      deviations_count: 0
+      primary_data_file: null
+      data_hash: null
+      session_id: <newly generated UUID4>
+      prompt_loaded_at: <timestamp recorded at session init, or current ISO-8601 timestamp>
+      open_questions: []
+      assumptions: []
+      sequencing_note: null
+      ```
+   2. Append the first entry to `studies/<study_name>/state_log.jsonl`:
+      ```
+      {"timestamp": "<ISO-8601>", "from_state": null, "to_state": "S1", "trigger": "user_approval", "approval_token": "CREATE STUDY DIR", "artifact_hashes": {}}
+      ```
+   3. Run `validate_project_state.py` on the new file (see `scripts/validators/README.md`). This is the study's first Python run, so it creates the per-study venv per system_prompt.md Analysis Approach — the wait and the install permission prompts are expected here. If validation fails, fix `project_state.md` and re-run before beginning S1.
+
+   Proceed per the system prompt once the directory is confirmed or already exists. If the study directory already exists but has no `project_state.md`, offer to create one with the initial values above (adjusting `current_state` only if the user confirms prior progress) rather than refusing to proceed.
 
 6. End every response with the State Output Contract block defined in the system prompt.

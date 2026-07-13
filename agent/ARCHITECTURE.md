@@ -22,7 +22,7 @@
 
 **Four gates require literal approval tokens.** Gates at S2 (hypotheses), S3 (study design), S4 (data plan), and S6 (analysis plan) require the exact strings `APPROVED S2`, `APPROVED S3`, `APPROVED S4`, and `APPROVED S6`. The matching rule is deliberately narrow: case-insensitive, whitespace-normalized, but not paraphrase-tolerant. "Sounds great" does not satisfy the gate. "Yes, approved" does not satisfy the gate. Any reply other than the token causes the agent to re-present the gate and quote the rule.
 
-**S6 is the most critical gate.** No inferential statistic — not a p-value, not a confidence interval on a hypothesis-test parameter, not a Bayes factor — may be computed on any primary or pre-specified secondary outcome before `APPROVED S6` is received. The prohibition covers runs labeled "preview," "sanity check," or "exploratory" when they touch the primary outcome. The gate also requires a dry-run on synthetic data to be completed and included in the locked artifact before approval is even requested, ensuring the analysis pipeline is executable before anyone commits to it.
+**S6 is the most critical gate.** No inferential statistic — not a p-value, not a confidence interval on a hypothesis-test parameter, not a Bayes factor — may be computed on any primary or pre-specified secondary outcome before `APPROVED S6` is received. The prohibition covers runs labeled "preview," "sanity check," or "exploratory" when they touch the primary outcome. The gate also requires a dry-run on synthetic data to be completed before approval is even requested, ensuring the analysis pipeline is executable before anyone commits to it.
 
 **Token vocabulary is frozen.** The full set of control tokens is defined in the system prompt and does not expand at runtime. This prevents a class of social-engineering prompts that attempt to introduce new "shortcut" tokens or redefine existing ones through context pressure.
 
@@ -32,7 +32,7 @@
 
 **The problem.** Without content-addressable locking, nothing stops a hypotheses file from being quietly amended after data is seen. The amendment may not be deliberate; an LLM assisting with "cleanup" could reword a hypothesis to better match what the data showed. The result is the same as HARKing regardless of intent.
 
-**SHA-256 stored in `project_state.md` creates a tamper-evident record.** At each gate approval, the agent writes the artifact, computes its SHA-256, and stores the hash in `project_state.md` under `locked_artifacts`. The `validate_locked_artifact.py` script then verifies byte-identical match. At S7 start, before any live analysis runs, the agent re-verifies that `s2_locked.md`, `s3_locked.md`, and `s4_locked.md` all still match their stored hashes. The `analysis_plan_locked.md` itself opens with a "Predicate locks" section that lists the path and hash of each antecedent artifact, making the chain of custody explicit in the document itself.
+**SHA-256 stored in `project_state.md` creates a tamper-evident record.** At each gate approval, the agent writes the artifact, computes its SHA-256, and stores the hash in `project_state.md` under `locked_artifacts`. The `validate_locked_artifact.py` script then verifies byte-identical match. At S7 start, before any live analysis runs, the agent re-verifies that `s2_locked.md`, `s3_locked.md`, `s4_locked.md`, and every analysis script recorded at S6 lock all still match their stored hashes. The `analysis_plan_locked.md` itself opens with a "Predicate locks" section that lists the path and hash of each antecedent artifact, making the chain of custody explicit in the document itself.
 
 **Why SHA-256 prevents HARKing.** The timestamp on the locked artifact predates data analysis by construction: S2 is locked before study design is approved, S6 is locked before any inferential test runs, and data is not even present in the workflow until S5. An amended artifact would produce a hash mismatch that the validator catches on next execution. Because the validator runs automatically and exits non-zero on mismatch, the agent halts before proceeding — the only way to continue is to surface the discrepancy to the user.
 
@@ -44,13 +44,13 @@
 
 **The problem.** A sufficiently creative prompt can pressure an LLM to work around instructions embedded in the same context window. Guardrails written as prose instructions face context pressure: as the conversation grows, the model weighs the initial instructions against the accumulated user requests in subsequent turns. A user who asks the same thing many times, reframes the request, or claims special authority can, over a long session, cause drift away from the initial constraints. This is a structural property of how language models are trained — not a failure of any particular model.
 
-**Five deterministic Python validators fail closed.** The validators exist as code outside the prompt, not as prose within it:
+**Four deterministic Python validators fail closed.** The validators exist as code outside the prompt, not as prose within it:
 
 - `validate_locked_artifact.py` — byte-level hash verification; cannot be reasoned past.
 - `validate_project_state.py` — schema validation of `project_state.md`; enforces required fields, type constraints, and hash consistency across all locked artifacts.
 - `validate_s5_script.py` — AST-walks every S5 script before execution, checking for banned inferential function calls from `scipy.stats`, `statsmodels` (via `.fit()`), and `pingouin`. It tracks aliased imports, so `import scipy.stats as ss; ss.ttest_ind()` is caught. No prompt instruction can bypass an AST check.
 - `validate_results_md.py` — enforces presence of Deviations and Reproducibility sections, flags causal language when the causal identification strategy is `none`, checks that effect sizes are accompanied by CIs, and applies a heuristic small-cell suppression check.
-- `validate_dry_run_byte_identical.py` — verifies that re-running the locked analysis script on the same synthetic dataset at S7 start produces byte-identical output to the S6 dry-run, catching environment drift before live data is touched.
+(Script and environment integrity between S6 approval and S7 execution is enforced by `validate_locked_artifact.py` on the analysis script hashes recorded in the predicate locks, plus a `pip freeze` comparison against the lock-time `requirements.txt` — see the appendix below for why this design was chosen.)
 
 Each script exits `0` (pass) or `1` (fail). Exit `1` causes an unconditional agent halt. The scripts are read-only and have no side effects. They require only the Python 3.10+ standard library plus `pyyaml`, so they cannot be broken by study-specific dependency changes.
 
@@ -83,6 +83,65 @@ Each script exits `0` (pass) or `1` (fail). Exit `1` causes an unconditional age
 **Injection attacks.** The DATA: fencing convention renders all content from data files, script stdout, and tool outputs inside labeled code blocks that the agent is instructed not to interpret as instructions. `validate_s5_script.py` validates scripts at the AST level before execution, preventing a class of attacks where injected cell values cause a malicious script to be written and run.
 
 **State forgery.** `state_log.jsonl` is append-only: entries are never edited or deleted, and every state transition — including regressions and reopens — appends a new entry with a timestamp, the triggering token, and a snapshot of all current artifact hashes. SHA-256 hashes on locked artifacts make the `project_state.md` content verifiable against the files on disk. An attempt to forge an approval by modifying `project_state.md` directly would produce a hash mismatch on the next validator run.
+
+---
+
+## Appendix — Why the S6 dry run and the S7 integrity checks exist
+
+*(Plain-language rationale, written to be quotable when explaining the agent to non-engineers.)*
+
+**The promise these steps protect.** QRA's core claim is pre-registration: the analysis that runs
+on your real data is exactly the one you approved, decided before anyone saw results. That claim
+has a vulnerable window — the time between typing `APPROVED S6` and the analysis actually
+running, which in real studies can span weeks of data collection. Two things live in that window
+that the hash-locked plan documents alone do not protect: the analysis *script* (the Python code
+that computes the results) and the *environment* (the specific package versions the script runs
+on). If either changes, the numbers produced are no longer the pre-registered analysis, even if
+every locked document is untouched.
+
+**Who would change them? Not a virus, and usually not the user.** Three realistic vectors, in
+order of importance:
+
+1. **The agent itself.** In this product, the LLM is the only engineer — it writes the script,
+   re-reads it across sessions, debugs, and resumes studies days later. An LLM is *helpful*;
+   left unchecked, it may "tidy up," fix, or regenerate its own code between approval and
+   execution. Each edit may be innocent, but the result is code the user never approved. This is
+   the same failure family as HARKing: not malice, just unconstrained helpfulness. And because
+   QRA's target users are not engineers, they will never open the script — a changed script is
+   invisible to them by definition. The mechanical check performs the code review the user
+   cannot do themselves.
+2. **Environment drift across the data-collection gap.** The plan is approved *before* data
+   exists; the user then fields the study for weeks. In that gap: a new laptop, a Python
+   reinstall, a rebuilt study environment — any of which installs *today's* package versions,
+   not approval-day's. A statistics library update can change a computational default and
+   therefore the numbers, with no one touching anything.
+3. **Accidental file changes** (cloud-sync restores, stray edits). Minor for this audience, but
+   covered by the same mechanism at no extra cost.
+
+**How each step answers this:**
+
+- **S6 dry run** (script runs once on synthetic data before approval is requested): a smoke
+  test. It guarantees the user is never asked to approve a plan whose pipeline cannot actually
+  execute — the failure surfaces before the gate, not after real data arrives.
+- **S7 script-hash check**: the SHA-256 of every analysis script is recorded in the predicate
+  locks at S6 approval. At S7 start, the hashes are re-verified. Any post-approval edit to the
+  code — by anyone, including the agent — is caught deterministically before real data is
+  touched. Uses the same locking machinery that already protects the plan documents.
+- **S7 environment check**: the package versions frozen at lock time (`requirements.txt`) are
+  compared against the venv's current state. Drift halts the run with the exact diff, and the
+  user can restore the locked environment with one command.
+
+**Design history (2026-07).** The original design enforced this window with a byte-identical
+re-run: re-execute the script on the synthetic data at S7 and require output identical to the
+S6 dry run, byte for byte. It was replaced because it answered the right questions the wrong
+way: locked scripts had no way to redirect output for comparison without being edited (breaking
+their own lock), `.xlsx` outputs embed save-timestamps and can never be byte-identical across
+runs, and the set of files to compare was never specified — the one real study that reached S7
+failed its own recheck on missing files while reporting success. Hash-plus-versions answers the
+same three questions (did the code change? did the environment change? does it run?)
+deterministically, with no re-execution and no comparison machinery. The accepted trade-off: a
+library that changes behavior *without* changing its version number goes undetected — rare, and
+the re-run design did not reliably catch it either.
 
 ---
 

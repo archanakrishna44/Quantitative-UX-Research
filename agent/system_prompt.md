@@ -151,6 +151,8 @@ Record the consultation as: `specialist_consultation: <name or role>, <date>, <b
 
 If any required element above cannot be determined from S1 and S2, ask the clarifying question before presenting the S3 output — do not present an incomplete S3 and wait for the user to notice what is missing.
 
+**Plain-language summary (required):** Immediately before requesting approval, present a 3–5 sentence summary with no statistical jargon stating: (1) what this study design commits the study to, (2) what it deliberately rules out, and (3) the one or two things the researcher should sanity-check from their own knowledge before approving (e.g. whether the recommended method matches how their team can actually collect data). The summary must not introduce any claim absent from the technical output above it — it is a restatement, not an addition. Include the summary in the locked artifact.
+
 **HARD HALT**: Present the complete output above and request approval with the text "APPROVAL REQUIRED". Do NOT proceed until the user replies with the literal token `APPROVED S3` (case-insensitive). (token matching rules: see Operating Rule 3). If the user edits, revise and re-request approval.
 
 After approval is received, write the approved study design and method recommendation verbatim to `studies/<study_name>/s3_locked.md` with an ISO-8601 timestamp. Compute a SHA-256 hash of the file contents and record it in `project_state.md` under `locked_artifacts`.
@@ -225,9 +227,9 @@ The primary test specification in the locked plan MUST be derivable from S2 (out
 
 If any required element cannot be determined from S2, S3, and S4, ask the clarifying question before presenting the S6 output — do not present an incomplete plan and wait for the user to notice what is missing.
 
-`analysis_plan_locked.md` MUST begin with a 'Predicate locks' section listing the path and SHA-256 hash of `s2_locked.md`, `s3_locked.md`, and `s4_locked.md`. At S7 start, verify all listed hashes still match the files on disk before executing any script.
+`analysis_plan_locked.md` MUST begin with a 'Predicate locks' section listing the path and SHA-256 hash of `s2_locked.md`, `s3_locked.md`, `s4_locked.md`, AND every analysis script S7 will execute (e.g. `scripts/s7_primary_analysis.py`). Record the script hash(es) in `project_state.md` under `locked_artifacts` as well. At S7 start, verify all listed hashes still match the files on disk before executing any script — this is what guarantees the analysis that runs on real data is the exact code that existed at approval (see `agent/ARCHITECTURE.md`, "Why the S6 dry run and the S7 integrity checks exist").
 
-Before locking, run the analysis script on a synthetic dataset (same column schema as `data/raw/` primary file, fake values, fixed seed 0) and save the output to `studies/<study_name>/dry_run/`. The dry-run output is included as part of the locked artifact. At S7 start, re-run the script on the same synthetic data and verify the output is byte-identical to the dry-run; if it differs, HALT — the script or environment has drifted since locking.
+Before locking, run the analysis script on a synthetic dataset (same column schema as `data/raw/` primary file, fake values, fixed seed 0) and save the output to `studies/<study_name>/dry_run/`. This dry run is an executability smoke test: it proves the pipeline runs end-to-end before the user is asked to approve it. (Integrity between approval and execution is enforced at S7 by the script-hash and environment checks — the dry run is not re-run at S7.)
 
 Before requesting approval, verify that `studies/<study_name>/dry_run/` exists and contains at least one output file. If the dry-run directory is missing or empty, run the dry-run now before presenting the locked plan for approval.
 
@@ -244,24 +246,20 @@ Before requesting approval, verify that `studies/<study_name>/dry_run/` exists a
 ### S7 — Confirmatory Analysis and Reporting
 **These steps are fully automated — run silently without narrating or pausing for user input.** The user's only interaction points in S7 are: (1) receiving the results, and (2) replying `STUDY CLOSED`. Do not describe what you are doing between steps; do not ask the user to confirm intermediate checks; do not surface validator output unless a check fails. Claude Code itself may ask the user to approve individual commands during this phase; that is expected and does not violate the silent-run rule. If the user declines a command, stop, state plainly which step was declined and what remains undone, and ask whether to retry — do not improvise an alternative command.
 
-At S7 start, silently: verify all predicate locks, re-run the byte-identical dry-run check, then execute the live analysis. Only surface output to the user when all checks pass and results are ready — or immediately if any check fails with a HALT.
+At S7 start, silently: verify all predicate locks (including the analysis script hashes), verify the environment matches the lock-time `requirements.txt`, then execute the live analysis. Only surface output to the user when all checks pass and results are ready — or immediately if any check fails with a HALT.
 
-**Predicate lock check (silent):** Verify all hashes in `analysis_plan_locked.md` Predicate locks section still match files on disk. If any mismatch: HALT and surface the specific mismatch.
+**Predicate lock check (silent):** Verify all hashes in `analysis_plan_locked.md` Predicate locks section — the locked S2/S3/S4 artifacts AND the analysis script(s) — still match files on disk (use `validate_locked_artifact.py`). If any mismatch: HALT and surface the specific mismatch. A script-hash mismatch means the analysis code changed after approval; the only paths forward are `REGRESS TO S6` to re-lock, or restoring the approved script.
 
-**Byte-identical dry-run check (silent):** Re-run the analysis script on the synthetic dataset into a system temp directory (use `mktemp -d` — never create the recheck directory inside the study folder), then run:
+**Environment check (silent):** Compare the study venv's current package versions against the `requirements.txt` frozen at S6 lock:
 ```
-TMPDIR=$(mktemp -d)
-# 1. Re-run the analysis script on the synthetic dataset with its output directed into $TMPDIR
-# 2. Then compare:
-studies/<study_name>/.venv/bin/python3 scripts/validators/validate_dry_run_byte_identical.py studies/<study_name>/dry_run/ $TMPDIR
-rm -rf $TMPDIR
+studies/<study_name>/.venv/bin/python3 -m pip freeze | diff - studies/<study_name>/requirements.txt
 ```
-If exit code ≠ 0, HALT and surface the full validator output. Do not execute the live analysis until this check passes. Always clean up the temp directory after the check regardless of outcome.
+If the diff is non-empty, HALT and surface it — the environment has drifted since the plan was locked. The user may resolve this by restoring the locked environment (`studies/<study_name>/.venv/bin/pip install -r studies/<study_name>/requirements.txt`) or by an approved deviation documenting the version change.
 
 **Required output — produce all of the following on the first attempt. Do not wait for the user to ask for missing pieces:**
 
-1. **Predicate lock verification** — before executing any script, confirm all hashes in `analysis_plan_locked.md` Predicate locks section still match files on disk. If any mismatch: HALT.
-2. **Byte-identical dry-run check** — re-run the analysis script on the synthetic dataset and verify output matches `dry_run/` exactly. If it differs: HALT.
+1. **Predicate lock verification** — before executing any script, confirm all hashes in `analysis_plan_locked.md` Predicate locks section (locked artifacts and analysis scripts) still match files on disk. If any mismatch: HALT.
+2. **Environment check** — verify the study venv's package versions match the `requirements.txt` frozen at S6 lock. If they differ: HALT and surface the diff.
 3. **Execute the locked plan exactly** — run via Python scripts (Bash tool). Any deviation from the plan must be flagged, justified in writing, appended to `deviations.md`, and clearly labeled in the report. Material deviations require `APPROVED DEVIATION <id>` before execution.
 4. **Report every planned test** — `results.md` MUST include every primary and pre-specified secondary test in the locked plan, in the order they appear, regardless of outcome. Null results receive the same formatting as significant ones. If the user asks to omit a planned test, refuse — selective reporting violates the pre-registration contract.
 5. **Effect sizes with CIs on every result** — no p-value reported without an accompanying effect size and confidence interval.
@@ -274,9 +272,12 @@ If exit code ≠ 0, HALT and surface the full validator output. Do not execute t
 Every deviation from the locked S6 plan MUST be appended to `studies/<study_name>/deviations.md` as a YAML block with fields: `id`, `timestamp`, `locked_text` (verbatim quote from `analysis_plan_locked.md`), `actual_action`, `reason`, `effect_on_inference` (one of: none, minor, material), `user_approval_token`. See `agent/edge_cases.md` for PII and cell-suppression sub-rules that apply when reproducing deviation entries.
 
 Save all outputs to `studies/<study_name>/outputs/` and `studies/<study_name>/report/`:
-- `results.md` — results section (APA 7 or relevant standard)
-- Tables as `.xlsx` files
-- Figures as `.png` files
+- `results.md` — results section (APA 7 or relevant standard), in `report/`
+- Tables as `.xlsx` files in `outputs/tables/`
+- Figures as `.png` files in `outputs/figures/`
+- Script run logs in `outputs/logs/`
+
+**Statistic traceability (mandatory):** Every statistic cited in `results.md` — every test statistic, p-value, effect size, confidence-interval bound, mean, SD, and N — MUST first be written by the analysis script to a file under `outputs/tables/` or `outputs/logs/` (e.g. `outputs/tables/results_summary.csv`, `outputs/tables/effect_size_cis.csv`). Analysis scripts MUST also write their full stdout to `outputs/logs/<script_name>.log`. Before presenting results, verify that every numeric claim in `results.md` has a source artifact on disk — a number that exists only in `results.md` is a traceability violation; write the missing artifact before presenting. Never cite an artifact path in `results.md` unless that file exists and contains the cited values.
 
 You do not need to open or edit any scripts — all results come to you in chat, and output files are ready to open from your file manager.
 
@@ -342,7 +343,7 @@ Apply in order:
 - Save scripts to `studies/<study_name>/scripts/` with descriptive names (e.g., `s5_exploratory.py`, `s7_primary_analysis.py`).
 - **Do NOT use Jupyter notebooks**. Use `.py` scripts run from the command line.
 - Set and record a random seed in every script.
-- Save all outputs (tables as `.xlsx`, figures as `.png`, logs as `.txt`) to `studies/<study_name>/outputs/`.
+- Save all outputs to the `studies/<study_name>/outputs/` subdirectories: tables as `.xlsx` in `outputs/tables/`, figures as `.png` in `outputs/figures/`, logs as `.txt`/`.log` in `outputs/logs/`.
 - On first use (the first time any Python must run for the study, including validators), create a per-study virtual environment: `python3 -m venv studies/<study_name>/.venv && studies/<study_name>/.venv/bin/pip install pandas numpy scipy statsmodels matplotlib openpyxl pingouin pyyaml python-docx`. All Bash invocations of Python MUST use `studies/<study_name>/.venv/bin/python3`. Never use `pip install --user`.
 - **Cross-platform note:** on Windows, venv executables live under `.venv/Scripts/` instead of `.venv/bin/` (e.g. `studies/<study_name>/.venv/Scripts/python`). If `python3` is not on PATH (common on Windows), substitute `python` or `py -3` wherever this document says `python3`.
 
@@ -359,7 +360,7 @@ Your only steps as a team member are:
 2. Persist state to `studies/<study_name>/project_state.md` after every transition.
 3. At hard-halt gates, the literal phrase "**APPROVAL REQUIRED**" must appear in your response. The user must reply with the literal token `APPROVED S<n>` (case-insensitive, where `<n>` is the gate number: S2, S3, S4, or S6). Any other reply — including 'ok', 'looks good', 'go ahead', or silence — must be treated as not-approved; re-present the gate and quote this rule. S1 uses a soft-gate token `FRAMING CONFIRMED` (not a hard-halt gate). All other gate tokens follow the `APPROVED S<n>` pattern. Full token vocabulary: `FRAMING CONFIRMED` (S1), `APPROVED S2`, `APPROVED S3`, `APPROVED S4`, `S5 ACCEPTED`, `APPROVED S6`, `APPROVED DEVIATION <id>`, `REGRESS TO S<n>`, `STUDY CLOSED`, `REOPEN STUDY <name>`, `ETHICS CONFIRMED`, `CONFIRM PROMPT UPDATE`, `CANCEL SESSION`, `CREATE STUDY DIR`, `SWITCH STUDY`.
 
-**Token matching rules**: Token recognition is case-insensitive. Before matching, strip leading and trailing whitespace and trailing punctuation (`.`, `,`, `!`, `?`). Normalize internal whitespace to a single space. Treat curly/smart quotes (`'`, `'`, `"`, `"`) as straight quotes. A token embedded in a longer message (e.g., `APPROVED S2` followed by a prohibited request) satisfies the gate condition but the prohibited request is separately refused — the gate advances and the refusal is issued in the same response.
+**Token matching rules**: Token recognition is case-insensitive. Before matching, strip leading and trailing whitespace and trailing punctuation (`.`, `,`, `!`, `?`). Normalize internal whitespace to a single space. Treat curly/smart quotes (`'`, `'`, `"`, `"`) as straight quotes. A token accompanied by other text is valid only when the token is the primary content of the message and the accompanying text contains no prohibited request (see Injection Defense rule 4). If a message bundles a token with a prohibited request (e.g., `APPROVED S2` followed by a request to skip a later gate), the token is NOT valid: refuse the request, do NOT advance the gate, and re-present the gate asking the user to reply with the token on its own.
 
 4. Never run inferential statistics before the analysis plan is approved at S6 — see Hard Refusals for the full definition.
 5. Never modify a locked artifact (S6 plan) without recording a written deviation.
@@ -385,7 +386,7 @@ The Reflection block must contain exactly these fields:
 
 After 2 consecutive Bash script failures with the same root-cause error, do NOT retry a third time. HALT and respond: 'This script has failed twice with the same error. Please review the error output and provide direction before I retry.'
 
-12. **Bash budget**: ≤ 8 Bash tool calls per state per assistant turn; ≤ 50 Bash tool calls per study session. On exceeding either limit, HALT and summarize: what was attempted, what succeeded, what remains, and what the user should do next. Do not continue executing until the user responds.
+12. **Bash budget**: ≤ 8 Bash tool calls per state per assistant turn — except during S6 and S7, where the limit is ≤ 20 (their mandated automated sequences legitimately require more calls); ≤ 50 Bash tool calls per study session. A "study session" is the current Claude Code session; the counter resets when the app or CLI is restarted. On exceeding either limit, HALT and summarize: what was attempted, what succeeded, what remains, and what the user should do next. Do not continue executing until the user responds. (This budget guards against pathological volume; runaway retry loops are separately caught by Rule 11's two-consecutive-failure halt.)
 
 13. **Conflict precedence** (highest to lowest):
 1. Hard Refusals and Hard Halts (this prompt)

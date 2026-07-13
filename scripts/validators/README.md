@@ -105,27 +105,6 @@ python3 validate_results_md.py <path_to_results_md> [--causal-strategy <strategy
 
 ---
 
-### `validate_dry_run_byte_identical.py`
-
-Verifies that re-running an analysis script on the same synthetic dataset produces byte-identical outputs to the S6 dry-run. Run this at S7 start before executing the live analysis.
-
-**Usage:**
-```
-python3 validate_dry_run_byte_identical.py <dry_run_dir> <current_output_dir>
-```
-
-**Logic:**
-- Recursively lists all files in `dry_run_dir`
-- For each file, finds the corresponding file in `current_output_dir` (same relative path)
-- Compares byte-by-byte for binary files
-- For `.log` and `.txt` files: compares line-by-line after stripping lines that begin with `YYYY-MM-DD` (timestamp-tolerant)
-- Reports: matched files, differing files (with size difference), missing files, and extra files
-- Fails if any file differs, is missing from the current output, or is extra in the current output (OS metadata files like `.DS_Store` are ignored)
-
-**Exit codes:** `0` = all files match (PASS), `1` = any file differs or is missing (FAIL)
-
----
-
 ## When to run each validator
 
 | State | Validator | Trigger |
@@ -133,7 +112,7 @@ python3 validate_dry_run_byte_identical.py <dry_run_dir> <current_output_dir>
 | S5 — before executing any exploratory script | `validate_s5_script.py` | Before every `python3` execution in S5 |
 | S6 — before requesting approval | `validate_project_state.py` | Before presenting locked plan for approval |
 | S6 — after writing each locked artifact | `validate_locked_artifact.py` | After writing `analysis_plan_locked.md` (and s2/s3/s4 equivalents) |
-| S7 — before live analysis execution | `validate_dry_run_byte_identical.py` | At S7 start |
+| S7 — before live analysis execution | `validate_locked_artifact.py` (predicate locks incl. analysis script hashes) + environment check (`pip freeze` vs lock-time `requirements.txt`) | At S7 start |
 | S7 — after producing results | `validate_results_md.py` | Before presenting results to the user |
 
 ---

@@ -36,7 +36,7 @@ QRA is designed for UX researchers and product teams, not engineers. You do not 
 
 Before starting, confirm these are in place:
 
-- **Claude Code** — desktop app or terminal; either works. QRA uses Claude Code's Bash tool to execute analysis scripts on your machine.
+- **Claude Code** — desktop app or terminal; either works. QRA uses Claude Code's Bash tool to execute analysis scripts on your machine. Don't have it? Download the desktop app from [claude.com/claude-code](https://claude.com/claude-code); developers can alternatively install the terminal version with `npm install -g @anthropic-ai/claude-code`.
 - **Python 3.10 or later** — required for the analysis scripts and validators. If it is not installed, download it from [python.org](https://www.python.org/downloads/). On Windows, check **"Add python.exe to PATH"** during installation.
 
 That is the entire setup. Everything else (pandas, scipy, python-docx, pyyaml, and the other analysis packages) is installed automatically by the agent into a private per-study environment when you start a study — it does not touch your system Python.
@@ -67,7 +67,12 @@ The agent runs a silent integrity check, loads its configuration, and greets you
 
 **About permission prompts:** as you work, Claude Code will occasionally ask you to approve a command before the agent runs it on your machine. This is normal — it is Claude Code's built-in safety layer, not an error. The commands you will see create study folders, install analysis packages into a private per-study environment, and run the workflow's checking scripts. For the repeated checking-script commands, choosing "always allow" is expected and safe.
 
-To start a new study, give it a short name — for example, `lender_satisfaction_q3`. The agent creates the study folder automatically and walks you through the first stage.
+To start a new study, give it a short name — for example, `onboarding_survey_q3`. The agent shows you the planned folder structure, creates it once you confirm with `CREATE STUDY DIR`, and walks you through the first stage.
+
+**If something goes wrong on first run:**
+- Message contains `INIT ERROR: no Python 3 interpreter found` — Python is not installed (or not on PATH). Install Python 3.10+ from [python.org](https://www.python.org/downloads/) (on Windows, check "Add python.exe to PATH"), restart Claude Code, and type `/qra` again.
+- Message says a config file *"has changed since last verified"* on a fresh download — the files were altered in transit (an interrupted download or a manual edit). Reply `CANCEL SESSION`, delete the folder, and re-download the project.
+- Typing `/qra` does nothing — make sure you opened the project folder itself (the one containing `README.md` and `CLAUDE.md`), not a folder above or inside it.
 
 ---
 
@@ -78,7 +83,7 @@ QRA moves through exactly one stage at a time. Each stage produces a specific ou
 | Stage | Name | What happens | Approval required |
 |-------|------|--------------|-------------------|
 | S1 | Intake | You answer 8 questions about your study. The agent writes a one-paragraph framing summary. | Reply `FRAMING CONFIRMED` |
-| S2 | Research Questions and Hypotheses | The agent writes a formal research question, null and alternative hypotheses, and defines the unit of analysis and population. | Reply `APPROVED S2` |
+| S2 | Research Question and Hypotheses | The agent writes a formal research question, null and alternative hypotheses, and defines the unit of analysis and population. | Reply `APPROVED S2` |
 | S3 | Study Design and Method | The agent recommends a UX research method (survey, tree test, A/B test, analytics, etc.) and a matching statistical test, with a threat-to-validity table. | Reply `APPROVED S3` |
 | S4 | Data Plan | The agent produces a variable table, recruitment criteria, power analysis, data collection procedure, and a privacy and ethics plan. | Reply `APPROVED S4` |
 | S5 | Data Preparation and Exploratory Checks | You drop your data file into the `data/raw/` folder. The agent scans for PII, validates the data against the S4 plan, and produces descriptive statistics and exploratory plots. No statistical tests are run at this stage. | Reply `S5 ACCEPTED` |
@@ -96,14 +101,14 @@ The full directory tree is documented in [`folder_structure.md`](folder_structur
 - `agent/` — the agent's configuration: `system_prompt.md` (the full workflow definition) and `ARCHITECTURE.md` (design rationale).
 - `knowledge/` — domain reference files covering research design, statistics, causal inference, ethics, and reproducibility. The agent loads these on demand.
 - `.claude/commands/` — contains `qra.md`, the slash command file. This is a hidden folder; enable "show hidden files" in your file manager to see it.
-- `scripts/validators/` — five Python scripts that enforce workflow rules as deterministic code. See [`scripts/validators/README.md`](scripts/validators/README.md) for what each one checks.
+- `scripts/validators/` — four Python scripts that enforce workflow rules as deterministic code. See [`scripts/validators/README.md`](scripts/validators/README.md) for what each one checks.
 - `studies/<study_name>/` — one folder per research study, created automatically by the agent. Your data goes in `data/raw/`; results appear in `outputs/` and `report/`.
 
 ---
 
 ## Approval tokens
 
-The agent accepts the following control tokens. These must be typed exactly as shown (they are not case-sensitive; surrounding whitespace and trailing punctuation are ignored).
+The agent accepts the following control tokens. These must be typed exactly as shown (they are not case-sensitive; surrounding whitespace and trailing punctuation are ignored). Best practice: send a token as its own message. A friendly note alongside it is fine ("APPROVED S4 — looks thorough"), but a token bundled with another request in the same message may be rejected, and the agent will ask you to resend the token on its own.
 
 | Token | When to use |
 |-------|-------------|

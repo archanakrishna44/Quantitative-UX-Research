@@ -7,8 +7,7 @@
       "Bash(python3 scripts/validators/validate_project_state.py:*)",
       "Bash(python3 scripts/validators/validate_locked_artifact.py:*)",
       "Bash(python3 scripts/validators/validate_s5_script.py:*)",
-      "Bash(python3 scripts/validators/validate_results_md.py:*)",
-      "Bash(python3 scripts/validators/validate_dry_run_byte_identical.py:*)"
+      "Bash(python3 scripts/validators/validate_results_md.py:*)"
     ]
   }
 }

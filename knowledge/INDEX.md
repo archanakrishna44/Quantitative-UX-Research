@@ -20,4 +20,3 @@ Load this file on every session. Load individual files only when entering the re
 | 09_ux_research_methods.md | ux-methods | S1, S2, S3 | UX-specific research methods including usability testing and surveys |
 | 10_ux_metrics_and_benchmarking.md | ux-metrics | S3, S4, S6, S7 | UX metrics (SUS, SUPR-Q, task success), benchmarking, and norm tables |
 | 11_triangulation_and_mixed_methods.md | mixed-methods | S2, S3 | Combining quantitative and qualitative data, triangulation strategies |
-| _audit_ground_truth_checklist.md | audit | S2, S3, S4, S6, S7 | Ground-truth checklist used to audit QRA outputs for correctness and completeness |

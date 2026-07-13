@@ -28,7 +28,6 @@ research/
 │
 ├── knowledge/                         ← domain reference files (loaded by agent on demand)
 │   ├── INDEX.md                       ← load at every session start — maps files to workflow stages
-│   ├── _audit_ground_truth_checklist.md ← internal build-time QA checklist (not runtime reference)
 │   ├── 01_research_design.md
 │   ├── 02_sampling_and_power.md
 │   ├── 03_measurement.md
@@ -48,8 +47,7 @@ research/
 │       ├── validate_project_state.py
 │       ├── validate_locked_artifact.py
 │       ├── validate_s5_script.py
-│       ├── validate_results_md.py
-│       └── validate_dry_run_byte_identical.py
+│       └── validate_results_md.py
 │
 ├── .claude/                           ← hidden folder (show hidden files in your OS file manager to see it)
 │   └── commands/
